@@ -1,0 +1,26 @@
+kind: LLMPrompt
+version: 0.1
+metadata:
+  name: "example_xml_prompt"
+  description: "Example XML prompt"
+  labels:
+    abc: xyz
+spec:
+  system:
+    - model: default
+      template:
+        - name: role
+          content: |
+            You are a helpful assistant.
+        - name: context
+          content: |
+            The user is asking about programming concepts.
+  user:
+    - model: default
+      template:
+        - name: question
+          content: |
+            Explain what is object-oriented programming.
+        - name: "Response Template"
+          content: |
+            Provide the answer in simple terms.

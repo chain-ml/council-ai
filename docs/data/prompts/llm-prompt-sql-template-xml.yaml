@@ -1,0 +1,44 @@
+kind: LLMPrompt
+version: 0.1
+metadata:
+  name: "SQL_XML_template"
+  description: "XML prompt template used for SQL generation"
+  labels:
+    abc: xyz
+spec:
+  system:
+    - model: default
+      template:
+        - name: Instructions
+          content: |
+            You are a sql expert solving the `task`
+            leveraging the database schema in the `dataset_description` section.
+    
+            - Assess whether the `task` is reasonable and possible
+              to solve given the database schema
+            - Keep your explanation concise with only important details and assumptions
+        - name: Dataset description
+          content: |
+            {dataset_description}
+        - name: Response formatting
+          content: |        
+            Your entire response must be inside the following code blocks.
+            All code blocks are mandatory.
+            
+            ```solved
+            True/False, indicating whether the task is solved
+            ```
+            
+            ```explanation
+            String, explanation of the solution if solved or reasoning if not solved
+            ```
+            
+            ```sql
+            String, the sql query if the task is solved, otherwise empty
+            ```
+  user:
+    - model: default
+      template:
+        - name: task
+          content: |
+            {question}

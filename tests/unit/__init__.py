@@ -15,6 +15,11 @@ class LLMPrompts:
     large: str = "prompt-large.yaml"
 
 
+class XMLPrompts:
+    sample: str = "xml-prompt-abc.yaml"
+    sql_template: str = "xml-prompt-template-sql.yaml"
+
+
 class LLMDatasets:
     batch: str = "dataset-batch.yaml"
     finetuning: str = "dataset-fine-tuning.yaml"

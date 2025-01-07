@@ -2,10 +2,16 @@ import unittest
 
 import yaml
 
-from council.prompt import LLMPromptConfigObject, LLMPromptConfigSpec
+from council.prompt import (
+    LLMPromptConfigObject,
+    LLMPromptConfigSpec,
+    XMLPromptSection,
+    XMLPromptTemplate,
+    StringPromptTemplate,
+)
 
 from tests import get_data_filename
-from .. import LLMPrompts
+from .. import LLMPrompts, XMLPrompts
 
 
 class TestLLMPromptConfig(unittest.TestCase):
@@ -15,6 +21,7 @@ class TestLLMPromptConfig(unittest.TestCase):
 
         assert isinstance(actual, LLMPromptConfigObject)
         assert actual.kind == "LLMPrompt"
+        assert isinstance(actual.spec.system_prompts[0], StringPromptTemplate)
 
     def test_llm_prompt_templates(self):
         filename = get_data_filename(LLMPrompts.sample)
@@ -96,3 +103,119 @@ class TestLLMPromptConfig(unittest.TestCase):
         with self.assertRaises(ValueError) as e:
             _ = LLMPromptConfigSpec.from_dict(values["spec"])
         assert str(e.exception).startswith("model `gpt-4o` and model-family `claude` are not compliant")
+
+
+class TestXMLPrompt(unittest.TestCase):
+    def test_xml_section(self):
+        section = XMLPromptSection(name="test", content="content")
+        assert section.to_xml() == "<test>\ncontent\n</test>"
+
+    def test_xml_section_snake_case(self):
+        section = XMLPromptSection(name="  Complex nAmE    ", content="Complex Content 123")
+        assert section.to_xml() == "<complex_name>\nComplex Content 123\n</complex_name>"
+
+    def test_xml_prompt_from_yaml(self):
+        filename = get_data_filename(XMLPrompts.sample)
+        actual = LLMPromptConfigObject.from_yaml(filename)
+
+        assert isinstance(actual, LLMPromptConfigObject)
+        assert actual.kind == "LLMPrompt"
+        assert isinstance(actual.spec.system_prompts[0], XMLPromptTemplate)
+
+    def test_sample_xml_prompt(self):
+        filename = get_data_filename(XMLPrompts.sample)
+        actual = LLMPromptConfigObject.from_yaml(filename)
+
+        assert (
+            actual.get_system_prompt_template("default")
+            == """<role>
+You are a helpful assistant.
+</role>
+<context>
+The user is asking about programming concepts.
+</context>"""
+        )
+
+        assert (
+            actual.get_user_prompt_template("default")
+            == """<question>
+Explain what is object-oriented programming.
+</question>
+<response_template>
+Provide the answer in simple terms.
+</response_template>"""
+        )
+
+    def test_parse_no_system(self):
+        prompt_config_spec = """
+        spec:
+          user:
+            - model: default
+              template:
+                - name: user
+                  content: |
+                    User prompt template specific for gpt-4o
+        """
+        values = yaml.safe_load(prompt_config_spec)
+        with self.assertRaises(ValueError) as e:
+            _ = LLMPromptConfigSpec.from_dict(values["spec"])
+        assert str(e.exception) == "System prompt(s) must be defined"
+
+    def test_parse_no_user(self):
+        prompt_config_spec = """
+        spec:
+          system:
+            - model: default
+              template:
+                - name: system
+                  content: |
+                    System prompt template
+        """
+        values = yaml.safe_load(prompt_config_spec)
+        _ = LLMPromptConfigSpec.from_dict(values["spec"])
+
+    def test_parse_no_class(self):
+        prompt_config_spec = """
+        spec:
+          system:
+            - model: default
+              template:
+                name: system
+        """
+        values = yaml.safe_load(prompt_config_spec)
+        with self.assertRaises(ValueError) as e:
+            _ = LLMPromptConfigSpec.from_dict(values["spec"])
+        assert str(e.exception).startswith("Could not determine template class for prompt:")
+
+    def test_mixed_classes(self):
+        prompt_config_spec = """
+        spec:
+          system:
+            - model: default
+              template: This is a string template
+          user:
+            - model: default
+              template:
+                - name: section
+                  content: This is xml template
+        """
+        values = yaml.safe_load(prompt_config_spec)
+        with self.assertRaises(ValueError) as e:
+            _ = LLMPromptConfigSpec.from_dict(values["spec"])
+        assert str(e.exception).startswith("Failed to parse prompts with template class StringPromptTemplate:")
+
+        prompt_config_spec = """
+        spec:
+          system:
+            - model: default
+              template:
+                - name: section
+                  content: This is xml template
+          user:
+            - model: default
+              template: This is a string template
+        """
+        values = yaml.safe_load(prompt_config_spec)
+        with self.assertRaises(ValueError) as e:
+            _ = LLMPromptConfigSpec.from_dict(values["spec"])
+        assert str(e.exception).startswith("Failed to parse prompts with template class XMLPromptTemplate:")

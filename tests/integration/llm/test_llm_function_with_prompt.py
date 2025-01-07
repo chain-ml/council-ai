@@ -8,7 +8,7 @@ from council.prompt import LLMPromptConfigObject
 from council.utils import OsEnviron
 from tests import get_data_filename
 from tests.integration.llm.test_llm_function import SQLResult
-from tests.unit import LLMPrompts
+from tests.unit import LLMPrompts, XMLPrompts
 
 DATASET_DESCRIPTION = """
 # DATASET - nyc_airbnb
@@ -44,6 +44,8 @@ class TestLlmFunctionWithPrompt(unittest.TestCase):
         self.prompt_config_template = LLMPromptConfigObject.from_yaml(get_data_filename(LLMPrompts.sql_template))
         self.prompt_config_large = LLMPromptConfigObject.from_yaml(get_data_filename(LLMPrompts.large))
 
+        self.prompt_config_template_xml = LLMPromptConfigObject.from_yaml(get_data_filename(XMLPrompts.sql_template))
+
     def test_simple_prompt(self):
         llm_func = LLMFunctionWithPrompt(self.llm, SQLResult.from_response, self.prompt_config_simple)
         llm_function_response = llm_func.execute_with_llm_response()
@@ -59,6 +61,17 @@ class TestLlmFunctionWithPrompt(unittest.TestCase):
             self.llm,
             SQLResult.from_response,
             self.prompt_config_template,
+            system_prompt_params={"dataset_description": DATASET_DESCRIPTION},
+        )
+        sql_result = llm_func.execute(user_prompt_params={"question": "Show me first 5 rows of the dataset"})
+        self.assertIsInstance(sql_result, SQLResult)
+        print("", sql_result, sep="\n")
+
+    def test_formatted_xml_prompt(self):
+        llm_func = LLMFunctionWithPrompt(
+            self.llm,
+            SQLResult.from_response,
+            self.prompt_config_template_xml,
             system_prompt_params={"dataset_description": DATASET_DESCRIPTION},
         )
         sql_result = llm_func.execute(user_prompt_params={"question": "Show me first 5 rows of the dataset"})
