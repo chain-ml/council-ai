@@ -4,7 +4,7 @@ import abc
 import json
 import os
 import re
-from typing import Any, Callable, Dict, Final, Type, TypeVar
+from typing import Any, Callable, Dict, Final, Literal, Type, TypeVar, Union, get_args, get_origin
 
 import yaml
 from council.llm.base import LLMParsingException
@@ -117,6 +117,20 @@ class BaseModelResponseParser(BaseModel, abc.ABC):
             clean_exception_message = re.sub(r"For further information visit.*", "", str(e))
             raise LLMParsingException(clean_exception_message)
 
+    @classmethod
+    def _is_of_type(cls, obj: Type, type_to_check: Type) -> bool:
+        try:
+            return issubclass(obj, type_to_check)
+        except TypeError:  # for typing.Literal
+            return False
+
+    @classmethod
+    def _is_list_of_type(cls, obj: Type, type_to_check: Type) -> bool:
+        return getattr(obj, "__origin__", None) is list and cls._is_of_type(obj.__args__[0], type_to_check)
+
+
+T_CodeBlocksResponseParserBase = TypeVar("T_CodeBlocksResponseParserBase", bound="CodeBlocksResponseParser")
+
 
 class CodeBlocksResponseParser(BaseModelResponseParser):
 
@@ -135,7 +149,7 @@ class CodeBlocksResponseParser(BaseModelResponseParser):
         return cls.create_and_validate(**parsed_blocks)
 
     @classmethod
-    def to_response_template(cls: Type[T], include_hints: bool = True) -> str:
+    def to_response_template(cls: Type[T_CodeBlocksResponseParserBase], include_hints: bool = True) -> str:
         """
         Generate code blocks response template based on the model's fields and their descriptions.
 
@@ -144,8 +158,21 @@ class CodeBlocksResponseParser(BaseModelResponseParser):
         """
 
         template_parts = [ResponseHintsHelper.code_blocks.block_parser] if include_hints else []
+        template_parts.append(cls._to_response_template())
+        return "\n".join(template_parts)
+
+    @classmethod
+    def _to_response_template(cls: Type[T_CodeBlocksResponseParserBase]) -> str:
+        """Generate code blocks response template based on the model's fields and their descriptions."""
+        template_parts = []
 
         for field_name, field in cls.model_fields.items():
+            if not cls._is_primitive(field.annotation):
+                raise ValueError(
+                    f"Field `{field_name}` has complex type {field.annotation}. "
+                    "Only primitive types (str, int, float, bool) are supported for CodeBlocksResponseParser."
+                )
+
             description = field.description
             if description is None:
                 raise ValueError(f"Description is required for field `{field_name}` in {cls.__name__}")
@@ -156,29 +183,71 @@ class CodeBlocksResponseParser(BaseModelResponseParser):
 
         return "\n".join(template_parts)
 
+    @staticmethod
+    def _is_primitive(field_type: Any) -> bool:
+        """
+        Check if a type is primitive (str, int, float, bool) and not a complex type
+        with support of Optional and Literal.
+        """
+
+        primitive_types = (str, int, float, bool, type(None))
+
+        if field_type in primitive_types:
+            return True
+
+        # get the origin type for annotations like Optional[str] and Literal["abc"]
+        origin = get_origin(field_type)
+        if origin == Literal:
+            return True
+        elif origin == Union:
+            args = get_args(field_type)
+            return all(arg in primitive_types for arg in args)
+
+        return False
+
 
 T_YAMLResponseParserBase = TypeVar("T_YAMLResponseParserBase", bound="YAMLResponseParserBase")
 
 
 class YAMLResponseParserBase(BaseModelResponseParser, abc.ABC):
     @classmethod
-    def _to_response_template(cls: Type[T]) -> str:
-        """Generate a YAML response template based on the model's fields and their descriptions."""
+    def _to_response_template(cls: Type[T], indent_level: int = 0) -> str:
+        """
+        Generate a YAML response template based on the model's fields and their descriptions.
+        Supports nested objects/list of objects but all of them must inherit from YAMLResponseParserBase.
+        """
         template_parts = []
+        indent = "  " * indent_level
 
         for field_name, field in cls.model_fields.items():
             description = field.description
             if description is None:
                 raise ValueError(f"Description is required for field `{field_name}` in {cls.__name__}")
+            field_type = field.annotation
+            if field_type is None:
+                raise ValueError(f"Type annotation is required for field `{field_name}` in {cls.__name__}")
 
-            is_multiline = "\n" in description
+            is_multiline_description = "\n" in description
 
-            if field.annotation is str and is_multiline:
-                template_parts.append(f"{field_name}: |")
+            # nested BaseModel
+            if cls._is_of_type(field_type, YAMLResponseParserBase):
+                template_parts.append(f"{indent}{field_name}: # {description}")
+                nested_template = field_type._to_response_template(indent_level + 1)
+                template_parts.append(nested_template)
+            # list of BaseModels
+            elif cls._is_list_of_type(field_type, YAMLResponseParserBase):
+                template_parts.append(f"{indent}{field_name}: # {description}")
+                template_parts.append(f"{indent}- # Each element being:")
+                nested_template = field_type.__args__[0]._to_response_template(indent_level + 1)
+                template_parts.append(nested_template)
+            # multiline string description
+            elif field_type is str and is_multiline_description:
+                template_parts.append(f"{indent}{field_name}: |")
                 for line in description.split("\n"):
-                    template_parts.append(f"  {line.strip()}")
+                    template_parts.append(f"{indent}  {line.strip()}")
+            # regular fields
             else:
-                template_parts.append(f"{field_name}: # {description}")
+                template_parts.append(f"{indent}{field_name}: # {description}")
 
         return "\n".join(template_parts)
 
@@ -248,20 +317,33 @@ T_JSONResponseParserBase = TypeVar("T_JSONResponseParserBase", bound="JSONRespon
 class JSONResponseParserBase(BaseModelResponseParser, abc.ABC):
     @classmethod
     def _to_response_template(cls: Type[T]) -> str:
-        """Generate a JSON response template based on the model's fields and their descriptions."""
+        """
+        Generate a JSON response template based on the model's fields and their descriptions.
+        Supports nested objects/list of objects but all of them must inherit from JSONResponseParserBase.
+
+        Field descriptions for lists are ignored.
+        """
         template_dict = {}
 
         for field_name, field in cls.model_fields.items():
-            description = field.description
-            if description is None:
-                raise ValueError(f"Description is required for field `{field_name}` in {cls.__name__}")
+            field_type = field.annotation
+            if field_type is None:
+                raise ValueError(f"Type annotation is required for field `{field_name}` in {cls.__name__}")
 
-            is_multiline = "\n" in description
-
-            if field.annotation is str and is_multiline:
-                template_dict[field_name] = "\n".join(line.strip() for line in description.split("\n"))
+            # nested BaseModel
+            if cls._is_of_type(field_type, JSONResponseParserBase):
+                nested_template = json.loads(field_type._to_response_template())
+                template_dict[field_name] = nested_template
+            # list of BaseModels
+            elif cls._is_list_of_type(field_type, JSONResponseParserBase):
+                nested_template = json.loads(field_type.__args__[0]._to_response_template())
+                template_dict[field_name] = [nested_template]
+            # regular fields
             else:
-                template_dict[field_name] = description
+                if field.description is None:
+                    raise ValueError(f"Description is required for field `{field_name}` in {cls.__name__}")
+
+                template_dict[field_name] = field.description
 
         return json.dumps(template_dict, indent=2)
 

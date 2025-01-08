@@ -69,7 +69,7 @@ for consumption in result.consumptions:
 
 #### Anthropic Prompt Caching Support
 
-For information about enabling Anthropic prompt caching, refer to {class}`~council.llm.llm_message.LLMCacheControlData`.
+For information about enabling Anthropic prompt caching, refer to {class}`~council.llm.LLMCacheControlData`.
 
 ### LLM Functions
 
@@ -82,11 +82,11 @@ LLM Functions provide structured ways to interact with LLMs including built-in r
 
 Response parsers help automate the parsing of common response formats to use LLMFunctions conveniently:
 
-- {class}`~council.llm.llm_response_parser.EchoResponseParser` for raw {class}`~council.llm.LLMResponse`
-- {class}`~council.llm.llm_response_parser.StringResponseParser` for plain text
-- {class}`~council.llm.llm_response_parser.CodeBlocksResponseParser` for code blocks
-- {class}`~council.llm.llm_response_parser.YAMLBlockResponseParser` and {class}`~council.llm.llm_response_parser.YAMLResponseParser` for YAML
-- {class}`~council.llm.llm_response_parser.JSONBlockResponseParser` and {class}`~council.llm.llm_response_parser.JSONResponseParser` for JSON
+- {class}`~council.llm.EchoResponseParser` for raw {class}`~council.llm.LLMResponse`
+- {class}`~council.llm.StringResponseParser` for plain text
+- {class}`~council.llm.CodeBlocksResponseParser` for code blocks
+- {class}`~council.llm.YAMLBlockResponseParser` and {class}`~council.llm.YAMLResponseParser` for YAML
+- {class}`~council.llm.JSONBlockResponseParser` and {class}`~council.llm.JSONResponseParser` for JSON
 
 ### LLM Middleware
 
