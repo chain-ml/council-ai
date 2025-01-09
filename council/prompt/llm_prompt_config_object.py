@@ -86,7 +86,10 @@ class StringPromptTemplate(PromptTemplateBase):
 
 
 class PromptSection:
-    """Represents a section in an section-based prompt, e.g. XML, markdown, etc."""
+    """
+    Represents a section in a section-based prompt, e.g. XML, markdown, etc.
+    Consists of a name, optional content, and optional nested sections.
+    """
 
     def __init__(
         self, *, name: str, content: Optional[str] = None, sections: Optional[List[PromptSection]] = None
@@ -99,13 +102,13 @@ class PromptSection:
     def from_dict(cls, values: Dict[str, Any]) -> PromptSection:
         name = values.get("name")
         if name is None:
-            raise ValueError("'name' must be defined")
+            raise ValueError("`name` must be defined")
 
         content = values.get("content")
         sections_data = values.get("sections", [])
 
         if not isinstance(sections_data, list):
-            raise ValueError("'sections' must be a list")
+            raise ValueError("`sections` must be a list")
 
         sections = [PromptSection.from_dict(section) for section in sections_data]
 
@@ -175,7 +178,7 @@ class MarkdownPromptTemplate(PromptTemplateBase):
         return MarkdownPromptTemplate(template=sections, model=model, model_family=model_family)
 
 
-class LLMPromptConfigSpecBase(DataObjectSpecBase, ABC):
+class PromptConfigSpecBase(DataObjectSpecBase, ABC):
     def __init__(self, system: Sequence[PromptTemplateBase], user: Optional[Sequence[PromptTemplateBase]]) -> None:
         self.system_prompts = list(system)
         self.user_prompts = list(user or [])
@@ -212,37 +215,37 @@ class LLMPromptConfigSpecBase(DataObjectSpecBase, ABC):
         return msg
 
 
-class LLMPromptConfigSpec(LLMPromptConfigSpecBase):
+class PromptConfigSpec(PromptConfigSpecBase):
     @classmethod
     def get_template_class(cls) -> Type[PromptTemplateBase]:
         return StringPromptTemplate
 
 
-class XMLLLMPromptConfigSpec(LLMPromptConfigSpecBase):
+class XMLPromptConfigSpec(PromptConfigSpecBase):
     @classmethod
     def get_template_class(cls) -> Type[PromptTemplateBase]:
         return XMLPromptTemplate
 
 
-class MarkdownLLMPromptConfigSpec(LLMPromptConfigSpecBase):
+class MarkdownPromptConfigSpec(PromptConfigSpecBase):
     @classmethod
     def get_template_class(cls) -> Type[PromptTemplateBase]:
         return MarkdownPromptTemplate
 
 
-class LLMPromptConfigObject(DataObject[LLMPromptConfigSpecBase]):
+class LLMPromptConfigObject(DataObject[PromptConfigSpecBase]):
     """
     Helper class to instantiate a LLMPrompt object from a YAML file.
     """
 
-    _kind_to_spec: Mapping[str, Type[LLMPromptConfigSpecBase]] = {
-        "LLMPrompt": LLMPromptConfigSpec,
-        "XMLLLMPrompt": XMLLLMPromptConfigSpec,
-        "MarkdownLLMPrompt": MarkdownLLMPromptConfigSpec,
+    _kind_to_spec: Mapping[str, Type[PromptConfigSpecBase]] = {
+        "LLMPrompt": PromptConfigSpec,
+        "XMLLLMPrompt": XMLPromptConfigSpec,
+        "MarkdownLLMPrompt": MarkdownPromptConfigSpec,
     }
 
     @classmethod
-    def from_dict(cls, spec: Type[LLMPromptConfigSpecBase], values: Dict[str, Any]) -> LLMPromptConfigObject:
+    def from_dict(cls, spec: Type[PromptConfigSpecBase], values: Dict[str, Any]) -> LLMPromptConfigObject:
         return super()._from_dict(spec, values)
 
     @classmethod
