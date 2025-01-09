@@ -1,4 +1,4 @@
-kind: LLMPrompt
+kind: XMLLLMPrompt
 version: 0.1
 metadata:
   name: "example_xml_prompt"

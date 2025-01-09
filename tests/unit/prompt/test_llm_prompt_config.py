@@ -5,10 +5,11 @@ import yaml
 from council.prompt import (
     LLMPromptConfigObject,
     LLMPromptConfigSpec,
-    XMLPromptSection,
+    PromptSection,
     XMLPromptTemplate,
     StringPromptTemplate,
 )
+from council.prompt.llm_prompt_config_object import XMLLLMPromptConfigSpec
 
 from tests import get_data_filename
 from .. import LLMPrompts, XMLPrompts
@@ -107,11 +108,11 @@ class TestLLMPromptConfig(unittest.TestCase):
 
 class TestXMLPrompt(unittest.TestCase):
     def test_xml_section(self):
-        section = XMLPromptSection(name="test", content="content")
+        section = PromptSection(name="test", content="content")
         assert section.to_xml() == "<test>\ncontent\n</test>"
 
     def test_xml_section_snake_case(self):
-        section = XMLPromptSection(name="  Complex nAmE    ", content="Complex Content 123")
+        section = PromptSection(name="  Complex nAmE    ", content="Complex Content 123")
         assert section.to_xml() == "<complex_name>\nComplex Content 123\n</complex_name>"
 
     def test_xml_prompt_from_yaml(self):
@@ -119,7 +120,7 @@ class TestXMLPrompt(unittest.TestCase):
         actual = LLMPromptConfigObject.from_yaml(filename)
 
         assert isinstance(actual, LLMPromptConfigObject)
-        assert actual.kind == "LLMPrompt"
+        assert actual.kind == "XMLLLMPrompt"
         assert isinstance(actual.spec.system_prompts[0], XMLPromptTemplate)
 
     def test_sample_xml_prompt(self):
@@ -158,7 +159,7 @@ Provide the answer in simple terms.
         """
         values = yaml.safe_load(prompt_config_spec)
         with self.assertRaises(ValueError) as e:
-            _ = LLMPromptConfigSpec.from_dict(values["spec"])
+            _ = XMLLLMPromptConfigSpec.from_dict(values["spec"])
         assert str(e.exception) == "System prompt(s) must be defined"
 
     def test_parse_no_user(self):
@@ -172,7 +173,7 @@ Provide the answer in simple terms.
                     System prompt template
         """
         values = yaml.safe_load(prompt_config_spec)
-        _ = LLMPromptConfigSpec.from_dict(values["spec"])
+        _ = XMLLLMPromptConfigSpec.from_dict(values["spec"])
 
     def test_parse_no_class(self):
         prompt_config_spec = """
@@ -184,8 +185,8 @@ Provide the answer in simple terms.
         """
         values = yaml.safe_load(prompt_config_spec)
         with self.assertRaises(ValueError) as e:
-            _ = LLMPromptConfigSpec.from_dict(values["spec"])
-        assert str(e.exception).startswith("Could not determine template class for prompt:")
+            _ = XMLLLMPromptConfigSpec.from_dict(values["spec"])
+        self.assertEquals(str(e.exception), "`template` must be a list of sections")
 
     def test_mixed_classes(self):
         prompt_config_spec = """
@@ -201,8 +202,8 @@ Provide the answer in simple terms.
         """
         values = yaml.safe_load(prompt_config_spec)
         with self.assertRaises(ValueError) as e:
-            _ = LLMPromptConfigSpec.from_dict(values["spec"])
-        assert str(e.exception).startswith("Failed to parse prompts with template class StringPromptTemplate:")
+            _ = XMLLLMPromptConfigSpec.from_dict(values["spec"])
+        self.assertEquals(str(e.exception), "`template` must be a list of sections")
 
         prompt_config_spec = """
         spec:
@@ -217,5 +218,5 @@ Provide the answer in simple terms.
         """
         values = yaml.safe_load(prompt_config_spec)
         with self.assertRaises(ValueError) as e:
-            _ = LLMPromptConfigSpec.from_dict(values["spec"])
-        assert str(e.exception).startswith("Failed to parse prompts with template class XMLPromptTemplate:")
+            _ = XMLLLMPromptConfigSpec.from_dict(values["spec"])
+        self.assertEquals(str(e.exception), "`template` must be a list of sections")

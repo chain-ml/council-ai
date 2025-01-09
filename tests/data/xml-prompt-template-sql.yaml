@@ -1,4 +1,4 @@
-kind: LLMPrompt
+kind: XMLLLMPrompt
 version: 0.1
 metadata:
   name: "SQL_XML_template"

@@ -7,7 +7,7 @@ from .llm_dataset import (
 from .llm_prompt_config_object import (
     PromptTemplateBase,
     StringPromptTemplate,
-    XMLPromptSection,
+    PromptSection,
     XMLPromptTemplate,
     LLMPromptConfigObject,
     LLMPromptConfigSpec,
