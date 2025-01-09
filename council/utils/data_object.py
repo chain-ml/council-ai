@@ -88,8 +88,12 @@ class DataObject(Generic[T]):
         }
 
     @classmethod
+    def _get_kind(cls, values: Dict[str, Any]):
+        return values.get("kind", None)
+
+    @classmethod
     def _check_kind(cls, values: Dict[str, Any], expected: str) -> None:
-        kind = values.get("kind", None)
+        kind = cls._get_kind(values)
         if kind != expected:
             raise ValueError(f"Expected kind: `{expected}`, found `{kind}` instead.")
 
