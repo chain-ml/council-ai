@@ -12,6 +12,20 @@ spec:
         - name: role
           content: |
             You are a helpful assistant.
+          sections:
+            - name: instructions
+              content: |
+                Answer user questions.
+            - name: rules
+              content: |
+                Here are rules to follow.
+              sections:
+                - name: Rule 1
+                  content: |
+                    Be nice.
+                - name: Rule 2
+                  content: |
+                    Be specific.
         - name: context
           content: |
             The user is asking about programming concepts.

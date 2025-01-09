@@ -107,13 +107,41 @@ class TestLLMPromptConfig(unittest.TestCase):
 
 
 class TestXMLPrompt(unittest.TestCase):
-    def test_xml_section(self):
-        section = PromptSection(name="test", content="content")
-        assert section.to_xml() == "<test>\ncontent\n</test>"
+    def test_section(self):
+        section = PromptSection(name="Complex nAmE", content="Complex Content 123")
+        assert (
+            section.to_xml()
+            == """<complex_name>
+  Complex Content 123
+</complex_name>"""
+        )
 
-    def test_xml_section_snake_case(self):
-        section = PromptSection(name="  Complex nAmE    ", content="Complex Content 123")
-        assert section.to_xml() == "<complex_name>\nComplex Content 123\n</complex_name>"
+        assert (
+            section.to_md()
+            == """# Complex nAmE
+Complex Content 123"""
+        )
+
+    def test_nested_section(self):
+        nested_section = PromptSection(name="Name2", content="content2")
+        section = PromptSection(name="Name1", content="content1", sections=[nested_section])
+        assert (
+            section.to_xml()
+            == """<name1>
+  content1
+  <name2>
+    content2
+  </name2>
+</name1>"""
+        )
+
+        assert (
+            section.to_md()
+            == """# Name1
+content1
+## Name2
+content2"""
+        )
 
     def test_xml_prompt_from_yaml(self):
         filename = get_data_filename(XMLPrompts.sample)
@@ -130,20 +158,32 @@ class TestXMLPrompt(unittest.TestCase):
         assert (
             actual.get_system_prompt_template("default")
             == """<role>
-You are a helpful assistant.
+  You are a helpful assistant.
+  <instructions>
+    Answer user questions.
+  </instructions>
+  <rules>
+    Here are rules to follow.
+    <rule_1>
+      Be nice.
+    </rule_1>
+    <rule_2>
+      Be specific.
+    </rule_2>
+  </rules>
 </role>
 <context>
-The user is asking about programming concepts.
+  The user is asking about programming concepts.
 </context>"""
         )
 
         assert (
             actual.get_user_prompt_template("default")
             == """<question>
-Explain what is object-oriented programming.
+  Explain what is object-oriented programming.
 </question>
 <response_template>
-Provide the answer in simple terms.
+  Provide the answer in simple terms.
 </response_template>"""
         )
 
