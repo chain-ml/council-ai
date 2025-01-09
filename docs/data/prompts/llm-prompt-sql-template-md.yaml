@@ -1,8 +1,8 @@
-kind: XMLLLMPrompt
+kind: MarkdownLLMPrompt
 version: 0.1
 metadata:
-  name: "SQL_XML_template"
-  description: "XML prompt template used for SQL generation"
+  name: "SQL_markdown_template"
+  description: "Markdown prompt template used for SQL generation"
   labels:
     abc: xyz
 spec:
