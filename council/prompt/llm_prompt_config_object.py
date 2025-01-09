@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Type
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Type
 
 import yaml
 from council.utils import DataObject, DataObjectSpecBase
@@ -36,12 +36,23 @@ class PromptTemplateBase(ABC):
         pass
 
     @staticmethod
-    def extract_template(values: Dict[str, Any]) -> Any:
-        template = values.get("template")
+    def _extract_template_and_models(values: Dict[str, Any]) -> Tuple[Any, Optional[str], Optional[str]]:
+        """Extract template, model, and model-family from the values dictionary."""
+        template = values.get("template", None)
         if template is None:
             raise ValueError("`template` must be defined")
 
-        return template
+        model = values.get("model", None)
+        model_family = values.get("model-family", None)
+        return template, model, model_family
+
+    @staticmethod
+    def _parse_template_sections(template: Any) -> List[PromptSection]:
+        """Parse template into a list of PromptSection objects."""
+        if not isinstance(template, list):
+            raise ValueError("`template` must be a list of sections")
+
+        return [PromptSection.from_dict(section) for section in template]
 
     def is_compatible(self, model: str) -> bool:
         """Check if the prompt template is compatible with the given model."""
@@ -67,12 +78,10 @@ class StringPromptTemplate(PromptTemplateBase):
 
     @classmethod
     def from_dict(cls, values: Dict[str, Any]) -> StringPromptTemplate:
-        template = cls.extract_template(values)
+        template, model, model_family = cls._extract_template_and_models(values)
         if not isinstance(template, str):
             raise ValueError("`template` must be string for StringPromptTemplate")
 
-        model = values.get("model", None)
-        model_family = values.get("model-family", None)
         return StringPromptTemplate(template=template, model=model, model_family=model_family)
 
 
@@ -115,14 +124,8 @@ class XMLPromptTemplate(PromptTemplateBase):
 
     @classmethod
     def from_dict(cls, values: Dict[str, Any]) -> XMLPromptTemplate:
-        template = cls.extract_template(values)
-        if not isinstance(template, list):
-            raise ValueError("`template` must be a list of sections")
-
-        sections = [PromptSection.from_dict(section) for section in template]
-
-        model = values.get("model", None)
-        model_family = values.get("model-family", None)
+        template, model, model_family = cls._extract_template_and_models(values)
+        sections = cls._parse_template_sections(template)
         return XMLPromptTemplate(template=sections, model=model, model_family=model_family)
 
 
@@ -140,14 +143,8 @@ class MarkdownPromptTemplate(PromptTemplateBase):
 
     @classmethod
     def from_dict(cls, values: Dict[str, Any]) -> MarkdownPromptTemplate:
-        template = cls.extract_template(values)
-        if not isinstance(template, list):
-            raise ValueError("`template` must be a list of sections")
-
-        sections = [PromptSection.from_dict(section) for section in template]
-
-        model = values.get("model", None)
-        model_family = values.get("model-family", None)
+        template, model, model_family = cls._extract_template_and_models(values)
+        sections = cls._parse_template_sections(template)
         return MarkdownPromptTemplate(template=sections, model=model, model_family=model_family)
 
 
