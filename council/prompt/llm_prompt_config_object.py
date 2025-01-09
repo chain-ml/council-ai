@@ -88,26 +88,53 @@ class StringPromptTemplate(PromptTemplateBase):
 class PromptSection:
     """Represents a section in an section-based prompt, e.g. XML, markdown, etc."""
 
-    def __init__(self, *, name: str, content: str) -> None:
+    def __init__(
+        self, *, name: str, content: Optional[str] = None, sections: Optional[List[PromptSection]] = None
+    ) -> None:
         self.name = name
-        self.content = content.strip()
+        self.content = content.strip() if content else None
+        self.sections = list(sections) if sections else []
 
     @classmethod
     def from_dict(cls, values: Dict[str, Any]) -> PromptSection:
         name = values.get("name")
+        if name is None:
+            raise ValueError("'name' must be defined")
+
         content = values.get("content")
-        if name is None or content is None:
-            raise ValueError("Both 'name' and 'content' must be defined")
-        return PromptSection(name=name, content=content)
+        sections_data = values.get("sections", [])
 
-    def to_xml(self) -> str:
-        """XML representation of the prompt section."""
+        if not isinstance(sections_data, list):
+            raise ValueError("'sections' must be a list")
+
+        sections = [PromptSection.from_dict(section) for section in sections_data]
+
+        return PromptSection(name=name, content=content, sections=sections)
+
+    def to_xml(self, indent: str = "") -> str:
+        """XML representation of the prompt section with proper indentation."""
+        intent_diff = "  "
         name_snake_case = self.name.lower().strip().replace(" ", "_")
-        return "\n".join([f"<{name_snake_case}>", self.content, f"</{name_snake_case}>"])
+        parts = [f"{indent}<{name_snake_case}>"]
 
-    def to_md(self) -> str:
-        """Markdown representation of the prompt section."""
-        return "\n".join([f"# {self.name}", self.content])
+        if self.content:
+            content_lines = self.content.split("\n")
+            content = "\n".join(f"{indent}{intent_diff}{line}" for line in content_lines)
+            parts.append(content)
+
+        parts.extend(section.to_xml(indent + intent_diff) for section in self.sections)
+        parts.append(f"{indent}</{name_snake_case}>")
+        return "\n".join(parts)
+
+    def to_md(self, level: int = 1) -> str:
+        """Markdown representation of the prompt section with proper heading levels."""
+        parts = [f"{'#' * level} {self.name}"]
+
+        if self.content:
+            parts.append(self.content)
+
+        parts.extend(section.to_md(level + 1) for section in self.sections)
+        return "\n".join(parts)
 
 
 class XMLPromptTemplate(PromptTemplateBase):
