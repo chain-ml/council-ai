@@ -24,3 +24,15 @@ from .llm_response_parser import (
 )
 from .llm_function import LLMFunction, LLMFunctionResponse, LLMFunctionError, FunctionOutOfRetryError
 from .llm_function_with_prompt import LLMFunctionWithPrompt
+from .llm_pipeline import (
+    ProcessorException,
+    LLMProcessorInput,
+    T_LLMInput,
+    T_LLMOutput,
+    LLMProcessorRecord,
+    Processor,
+    LLMProcessor,
+    PipelineProcessorBase,
+    NaivePipelineProcessor,
+    BacktrackingPipelineProcessor,
+)
