@@ -68,6 +68,7 @@ from .llm_function import (
     LLMResponseParser,
     LLMRetryMiddleware,
     LLMTimestampFileLoggingMiddleware,
+    ParallelExecutor,
     StringResponseParser,
     YAMLBlockResponseParser,
     YAMLResponseParser,

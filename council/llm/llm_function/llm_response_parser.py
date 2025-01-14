@@ -88,6 +88,11 @@ class BaseModelResponseParser(BaseModel, abc.ABC):
         """Convert an instance to the response template for the LLM."""
         raise NotImplementedError()
 
+    @classmethod
+    def format(cls: Type[T], prompt: str) -> str:
+        """Format the prompt with the `response_template` argument."""
+        return prompt.format(response_template=cls.to_response_template())
+
     def validator(self) -> None:
         """
         Implement custom validation logic for the parsed data.

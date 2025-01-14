@@ -24,3 +24,4 @@ from .llm_response_parser import (
 )
 from .llm_function import LLMFunction, LLMFunctionResponse, LLMFunctionError, FunctionOutOfRetryError
 from .llm_function_with_prompt import LLMFunctionWithPrompt
+from .executor import ParallelExecutor
